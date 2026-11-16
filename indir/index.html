@@ -18,12 +18,14 @@
                  App Store Connect > Uygulama Analizi > Kampanyalar)
   Ornek: .../get/?utm_source=instagram&utm_medium=paid&utm_campaign=reels_jp_2026_11
 
-  SAYAC (2026-11-16, sahip istegi: "cerez olmasin, en basiti"): GoatCounter.
-    Cerez YOK, kisisel veri YOK, ucretsiz. Yonlendirmeden hemen once tek istek:
-      /<oyun>/indir/android|ios|masaustu (uzay-kolonisi)  (+ utm sorgusu ve referrer)
-    fetch keepalive: sayfa terk edilse de istek gider; yonlendirmeyi BEKLETMEZ.
-    GC_SITE bossa hic istek atilmaz. Panel: https://<GC_SITE>.goatcounter.com
-    ?dur=1 (test) sayilmaz.
+  SAYAC (2026-11-16, sahip karari: "cerez yok, dis site yok"): kendi Firebase'imiz.
+    Yonlendirmeden hemen once TEK GET (fetch keepalive; sayfa BEKLEMEZ):
+      https://asia-northeast1-uzay-kolonisi-idle.cloudfunctions.net/sayac
+      ?o=<oyun>&h=android|ios|masaustu&tz=<saat dilimi>&dl=<dil>&src=&kmp=
+    Fonksiyon kaynagi ve panel: D:dashboard (sayac-fonksiyon/). Cerez YOK, IP ve
+    tarayici kimligi SAKLANMAZ; yalniz gunluk toplamlar (gunluk_sayac koleksiyonu).
+    Kaynak: utm_source > Instagram/Facebook uygulama ici tarayici > referrer alani.
+    ?dur=1 (test) sayilmaz. Sayac hata verirse yonlendirme yine calisir.
 
   GitHub Pages statiktir: sunucu tarafi kod calismaz; yonlendirme tarayicida,
   ilk boyamadan once (head icinde) yapilir.
@@ -45,9 +47,9 @@
   var APPLE_PT = ''
   var PAKET = 'com.shaumnegames.uzaykolonisi'
   var APPLE_ID = '6806013396'
-  // GoatCounter site kodu (https://<kod>.goatcounter.com). Bossa sayac kapali.
-  var GC_SITE = 'shaumnegames'
-  // Ayni GoatCounter sitesi TUM oyunlar icin: yollar oyun kisaltmasiyla baslar.
+  // Sayac (D:dashboardsayac-fonksiyon). Bossa sayac kapali.
+  var SAYAC = 'https://asia-northeast1-uzay-kolonisi-idle.cloudfunctions.net/sayac'
+  // D:dashboardoyunlar.json'daki slug ile AYNI.
   var OYUN = 'uzay-kolonisi'
 
   var q = new URLSearchParams(location.search)
@@ -72,15 +74,20 @@
 
   // Sayac: hangi magazaya gonderildigini say (cerezsiz). Hata olursa sessizce gec.
   try {
-    if (GC_SITE) {
+    if (SAYAC) {
       var hedef = android ? 'android' : apple ? 'ios' : 'masaustu'
-      var u = 'https://' + GC_SITE + '.goatcounter.com/count' +
-        '?p=' + encodeURIComponent('/' + OYUN + '/indir/' + hedef) +
-        '&t=' + encodeURIComponent(OYUN + ' ' + hedef) +
-        '&r=' + encodeURIComponent(document.referrer || '') +
-        '&q=' + encodeURIComponent(location.search) +
-        '&s=' + encodeURIComponent(screen.width + ',' + screen.height + ',' + (window.devicePixelRatio || 1)) +
-        '&rnd=' + Math.random().toString(36).slice(2)
+      var ref = ''
+      try { ref = document.referrer ? new URL(document.referrer).hostname : '' } catch (e) {}
+      var src = q.get('utm_source') ||
+        (/Instagram/.test(ua) ? 'instagram_uygulama' : /FBAN|FBAV/.test(ua) ? 'facebook_uygulama' : '') ||
+        ref || 'dogrudan'
+      var tz = ''
+      try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '' } catch (e) {}
+      var u = SAYAC + '?o=' + OYUN + '&h=' + hedef +
+        '&tz=' + encodeURIComponent(tz) +
+        '&dl=' + encodeURIComponent(navigator.language || '') +
+        '&src=' + encodeURIComponent(src) +
+        '&kmp=' + encodeURIComponent(q.get('utm_campaign') || '')
       if (window.fetch) fetch(u, { mode: 'no-cors', keepalive: true, credentials: 'omit' })
       else new Image().src = u
     }
@@ -116,7 +123,7 @@
   <a class="btn" id="ios" href="https://apps.apple.com/app/id6806013396">App Store でダウンロード</a>
   <a class="btn ikincil" id="play" href="https://play.google.com/store/apps/details?id=com.shaumnegames.uzaykolonisi">Google Play で手に入れよう</a>
   <small>Download on the App Store ・ Get it on Google Play</small>
-  <small>アクセス数の集計に GoatCounter を利用しています（Cookie・個人情報は使用しません）。</small>
+  <small>アクセス数（端末の種類・地域・参照元の合計のみ）を集計しています。Cookie や個人情報は使用しません。</small>
 </main>
 <script>
   // Dugmeler de olcum parametrelerini tasisin (masaustunden telefona gecenler icin).
